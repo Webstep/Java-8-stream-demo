@@ -4,10 +4,15 @@ import no.webstep.consulting.modell.Person;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import static com.google.common.collect.ImmutableSet.of;
+import static java.util.stream.Collectors.groupingBy;
 import static java.util.stream.Collectors.toSet;
 import static no.webstep.consulting.modell.Land.*;
 import static no.webstep.consulting.modell.Person.Kjonn.Kvinne;
@@ -62,27 +67,83 @@ public class StreamTest {
     }
 
     @Test
-    public void finnAlleBarnOver10år() {
+    public void finnAlleBarnOver9år() {
         Set<Person> alleBarn = new HashSet<>();
         for(Person forelder : foreldre)
             for(Person barn : forelder.getBarn()) {
-                if(barn.getAge() > 10) {
+                if(barn.getAge() > 9) {
                     alleBarn.add(barn);
                 }
             }
 
         System.out.println(alleBarn);
-        assertEquals(1, alleBarn.size());
+        assertEquals(2, alleBarn.size());
     }
 
     @Test
-    public void finnAlleBarnaOver10årFraNorge() {
+    public void finnAlleBarnOver9årStream() {
+        Set<Person> alleBarn = foreldre.stream()
+                .flatMap(p -> p.getBarn().stream())
+                .filter(p -> p.getAge() > 9)
+                .collect(toSet());
+        System.out.println(alleBarn);
+        assertEquals(2, alleBarn.size());
+    }
 
+    @Test
+    public void tellAntallBarnUnder10årMedForeldreFraNorge() {
+        int teller = 0;
+        for(Person forelder : foreldre) {
+            if(forelder.getNasjonalitet().contains(Norge)) {
+                for(Person barn : forelder.getBarn()) {
+                    if(barn.getAge() < 10) {
+                        teller++;
+                    }
+                }
+            }
+        }
+        assertEquals(2, teller);
+    }
+
+    @Test
+    public void tellAntallBarnUnder10årMedForeldreFraNorgeStream() {
+        long teller = foreldre.stream()
+                .filter(p -> p.getNasjonalitet().contains(Norge))
+                .flatMap(p -> p.getBarn().stream())
+                .distinct()
+                .filter(p -> p.getAge() < 10)
+                .count();
+        assertEquals(2, teller);
     }
 
     @Test
     public void finnAlleBarnGrupperPåAlder() {
+        Map<Integer, List<Person>> alleBarn = new HashMap<>();
+        for(Person forelder : foreldre) {
+            List<Person> barnList = new ArrayList<>();
+            for(Person barn : forelder.getBarn()) {
+                if(!alleBarn.containsKey(barn.getAge())) {
+                    barnList.add(barn);
+                    alleBarn.put(barn.getAge(), barnList);
+                } else {
+                    List<Person> alleBarnLista = alleBarn.get(barn.getAge());
+                    alleBarnLista.add(barn);
+                }
+            }
+        }
+        System.out.println(alleBarn.keySet());
+        assertEquals(3, alleBarn.get(3).size());
+    }
 
+    @Test
+    public void finnAlleBarnGrupperPåAlderStream() {
+        Map<Integer, List<Person>> alleBarn = foreldre.stream()
+                .flatMap(p -> p.getBarn().stream())
+                .distinct()
+                .collect(groupingBy(Person::getAge));
+
+        System.out.println(alleBarn.keySet());
+        assertEquals(2, alleBarn.get(3).size());
     }
 
 }
